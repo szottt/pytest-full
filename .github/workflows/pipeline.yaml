@@ -38,6 +38,8 @@ jobs:
             --cov-report=term \
             -v \
             -q
+# File: .github/workflows/pipeline.yaml
+# ... existing code for 'test' job ...
 
   create-pull-request:
     runs-on: ubuntu-latest
@@ -49,14 +51,17 @@ jobs:
         with:
           fetch-depth: 0 # Necessário para a action de PR
 
+      # Passo de diagnóstico ajustado
       - name: Check differences before PR action
         run: |
-          git fetch origin develop:develop
-          git fetch origin ${{ github.ref_name }}:${{ github.ref_name }}
+          # Fetch apenas as referências remotas sem atualizar branches locais
+          git fetch origin develop
+          git fetch origin ${{ github.ref_name }}
           echo "Commits in ${{ github.ref_name }} not in develop:"
-          git log develop..${{ github.ref_name }} --oneline
+          # Comparar as referências remotas
+          git log origin/develop..origin/${{ github.ref_name }} --oneline
           echo "Count of commits in ${{ github.ref_name }} not in develop:"
-          git rev-list --right-only --count develop...${{ github.ref_name }}
+          git rev-list --right-only --count origin/develop...origin/${{ github.ref_name }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
