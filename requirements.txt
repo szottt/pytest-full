@@ -8,3 +8,4 @@ mkdocs-material
 interrogate
 invoke
 termcolor
+sqlalchemy
