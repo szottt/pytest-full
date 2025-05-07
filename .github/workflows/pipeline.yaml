@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Novo passo para verificar a variável
+      - name: Check github.ref_name
+        run: echo "github.ref_name is ${{ github.ref_name }}"
+
       - name: Copia os arquivos do repo
         uses: actions/checkout@v3
 
@@ -45,6 +49,15 @@ jobs:
         with:
           fetch-depth: 0 # Necessário para a action de PR
 
+      - name: Check differences before PR action
+        run: |
+          git fetch origin develop:develop
+          git fetch origin ${{ github.ref_name }}:${{ github.ref_name }}
+          echo "Commits in ${{ github.ref_name }} not in develop:"
+          git log develop..${{ github.ref_name }} --oneline
+          echo "Count of commits in ${{ github.ref_name }} not in develop:"
+          git rev-list --right-only --count develop...${{ github.ref_name }}
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
@@ -55,5 +68,5 @@ jobs:
             Este Pull Request foi criado automaticamente pelo GitHub Actions.
 
             Merge da branch `${{ github.ref_name }}` para `develop`.
-          branch: ${{ github.ref_name }} # Branch de destino
-          base: develop # Branch de origem (a branch feature/* que disparou o workflow)
+          branch: ${{ github.ref_name }} # Branch de origem
+          base: develop # Branch de destino
