@@ -1,0 +1,45 @@
+# File: .github/workflows/release-to-main.yaml
+name: 'Merge Release to Main' # Nome do workflow
+
+on:
+  pull_request:
+    types: [closed] # Dispara quando um Pull Request é fechado
+    branches:
+      - 'main' # Dispara apenas para PRs fechados onde a branch base é 'main'
+
+permissions:
+  contents: write # Permissão necessária para fazer o merge e push para main
+
+jobs:
+  merge_to_main:
+    runs-on: ubuntu-latest
+    # Só executa este job se o Pull Request foi mergeado (não apenas fechado sem merge)
+    if: github.event.pull_request.merged
+    environment: Producao # Associa este job ao ambiente Producao
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: main # Faz checkout da branch main
+          fetch-depth: 0 # Necessário para operações de merge
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Merge release branch into main
+        run: |
+          # Puxa as últimas mudanças da main
+          git pull origin main
+          # Faz o merge da branch que foi mergeada no PR (a branch head do PR fechado)
+          # github.event.pull_request.head.ref contém o nome da branch de origem do PR
+          git merge --no-ff origin/${{ github.event.pull_request.head.ref }} -m "Merge branch '${{ github.event.pull_request.head.ref }}' into main via PR #${{ github.event.pull_request.number }}"
+
+      - name: Push changes to main
+        run: |
+          git push origin main
