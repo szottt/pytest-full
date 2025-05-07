@@ -102,8 +102,8 @@ jobs:
           NEXT_VERSION=${{ steps.set_version.outputs.NEXT_VERSION }}
           # Cria o Pull Request usando o GitHub CLI
           gh pr create \
-            --base $NEW_RELEASE_BRANCH \ # Branch de destino: a nova branch de release
-            --head develop \ # Branch de origem: develop
-            --title "Merge develop into release v${NEXT_VERSION}" \ # Título atualizado
-            --body "Pull Request para mergear as mudanças de `develop` na branch de release `${NEW_RELEASE_BRANCH}`." # Corpo atualizado
+            --base $NEW_RELEASE_BRANCH \
+            --head develop \
+            --title "Merge develop into release v${NEXT_VERSION}" \
+            --body "Pull Request para mergear as mudanças de `develop` na branch de release `${NEW_RELEASE_BRANCH}`."
 
