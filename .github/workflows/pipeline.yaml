@@ -1,33 +1,45 @@
-name: Feature to Develop
+name: 'Feature to Develop'
 
 on:
   push:
     branches:
       - 'feature/*'
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  test-and-pr:
+  test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Copia os arquivos do repo
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Instalar o python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11.1'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Pytest
-        run: pytest
+      - name: Cria alteração para forçar commit
+        run: |
+          echo "Executado em $(date)" >> .auto-pr-log.txt
 
-      - name: Create Pull Request to develop
-        if: success() # Só executa se os testes passarem
-        uses: peter-evans/create-pull-request@v5
+      - name: Commit das alterações
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .auto-pr-log.txt
+          git commit -m "chore: trigger automatic PR" || echo "Nenhuma alteração para commitar"
+
+      - name: Criar Pull Request para develop
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: develop
