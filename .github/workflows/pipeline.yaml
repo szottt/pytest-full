@@ -1,3 +1,4 @@
+# File: .github/workflows/pipeline.yaml
 name: 'Feature to Develop'
 
 on:
@@ -54,5 +55,5 @@ jobs:
             Este Pull Request foi criado automaticamente pelo GitHub Actions.
 
             Merge da branch `${{ github.ref_name }}` para `develop`.
-          branch: develop # Branch de destino
-          base: ${{ github.ref_name }} # Branch de origem (a branch feature/* que disparou o workflow)
+          branch: ${{ github.ref_name }} # Branch de destino
+          base: develop # Branch de origem (a branch feature/* que disparou o workflow)
