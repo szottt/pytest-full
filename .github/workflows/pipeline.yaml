@@ -27,15 +27,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create Pull Request to develop
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: develop
-          branch: ${{ github.ref_name }}
-          title: 'Merge feature/${{ github.ref_name }} into develop'
-          body: 'Automated PR from feature branch to develop'
-
       # - name: Run tests
       #   run: |
       #     chmod +x run_tests.sh
