@@ -27,19 +27,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Cria alteração para forçar commit
-        run: |
-          echo "Executado em $(date)" >> .auto-pr-log.txt
-
-      - name: Commit das alterações
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add .auto-pr-log.txt
-          git commit -m "chore: trigger automatic PR" || echo "Nenhuma alteração para commitar"
-
-      - name: Criar Pull Request para develop
-        uses: peter-evans/create-pull-request@v7
+      - name: Create Pull Request to develop
+        uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: develop
