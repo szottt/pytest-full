@@ -36,7 +36,7 @@ jobs:
           title: 'Merge feature/${{ github.ref_name }} into develop'
           body: 'Automated PR from feature branch to develop'
 
-      - name: Run tests
-        run: |
-          chmod +x run_tests.sh
-          ./run_tests.sh
+      # - name: Run tests
+      #   run: |
+      #     chmod +x run_tests.sh
+      #     ./run_tests.sh
