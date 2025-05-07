@@ -38,11 +38,6 @@ jobs:
             --cov-report=term \
             -v \
             -q
-# File: .github/workflows/pipeline.yaml
-# ... existing code for 'test' job ...
-
-# File: .github/workflows/pipeline.yaml
-# ... existing code for 'test' job ...
 
   create-pull-request:
     runs-on: ubuntu-latest
@@ -64,7 +59,7 @@ jobs:
           echo "Count of commits in ${{ github.ref_name }} not in develop:"
           git rev-list --right-only --count origin/develop...origin/${{ github.ref_name }}
 
-      # Passo para criar o Pull Request usando GitHub CLI
+      # Passo para criar o Pull Request usando GitHub CLI (sem || true)
       - name: Create Pull Request using GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -73,6 +68,6 @@ jobs:
             --base develop \
             --head ${{ github.ref_name }} \
             --title "feat: PR from ${{ github.ref_name }}" \
-            --body "Este Pull Request foi criado automaticamente pelo GitHub Actions.\n\nMerge da branch `${{ github.ref_name }}` para `develop`." || true # Adiciona || true para não falhar o job se o PR já existir
+            --body "Este Pull Request foi criado automaticamente pelo GitHub Actions.\n\nMerge da branch `${{ github.ref_name }}` para `develop`." # Removido || true
 
 
