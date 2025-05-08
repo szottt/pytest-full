@@ -1,0 +1,11 @@
+pytest
+pytest-cov
+mock
+flake8
+mypy
+isort
+mkdocs-material
+interrogate
+invoke
+termcolor
+sqlalchemy

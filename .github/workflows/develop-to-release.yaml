@@ -1,0 +1,112 @@
+# File: .github/workflows/develop-to-release.yaml
+name: 'Develop to Release Branch and PR from Develop' # Nome do workflow
+
+on:
+  push:
+    branches: [develop] # Dispara no push para develop
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # Mantém os passos de teste existentes
+      - name: Check github.ref_name
+        run: echo "github.ref_name is ${{ github.ref_name }}"
+
+      - name: Copia os arquivos do repo
+        uses: actions/checkout@v3
+
+      - name: Instalar o python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.1'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Tests
+        run: |
+          pytest --rootdir=. \
+            --cov=. \
+            --cov-report=term \
+            -v \
+            -q
+
+  create-release-branch-and-pr: # Nome do job
+    runs-on: ubuntu-latest
+    needs: test # Só roda se os testes passarem
+    environment: Homolog # Associa este job ao ambiente Homolog
+    permissions:
+      contents: write
+      pull-requests: write # Permissões necessárias para criar branch e PR
+
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v3
+        with:
+          ref: develop # Faz checkout da branch develop para ter o contexto
+          fetch-depth: 0 # Necessário para buscar histórico completo e tags/branches
+
+      - name: Determine next release version and branch name
+        id: set_version # Define um ID para acessar as saídas deste passo
+        run: |
+          # Busca todas as branches remotas que começam com 'release-'
+          # O || true evita que o workflow falhe se não houver branches de release ainda
+          git fetch origin 'refs/heads/release-*:refs/remotes/origin/release-*' || true
+
+          # Encontra a última branch de release pelo nome (ordem alfabética/versão)
+          LATEST_RELEASE_BRANCH=$(git branch -r | grep 'origin/release-' | sed 's/.*origin\///' | sort -V | tail -n 1)
+
+          if [ -z "$LATEST_RELEASE_BRANCH" ]; then
+            # Se não houver branches de release, começa com 0.0.1
+            NEXT_VERSION="0.0.1"
+            # Para a primeira release, a branch base para criar a nova release será develop
+            BRANCH_BASE_FOR_NEW_RELEASE="develop"
+          else
+            # Extrai o número da versão (ex: 0.0.1 de release-0.0.1)
+            CURRENT_VERSION=$(echo "$LATEST_RELEASE_BRANCH" | sed 's/release-//')
+            # Divide a versão em partes (major, minor, patch)
+            MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+            PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
+            # Incrementa o número do patch
+            NEXT_PATCH=$((PATCH + 1))
+            NEXT_VERSION="$MAJOR.$MINOR.$NEXT_PATCH"
+            # Para releases subsequentes, a branch base para criar a nova release será a última branch de release
+            BRANCH_BASE_FOR_NEW_RELEASE="$LATEST_RELEASE_BRANCH"
+          fi
+
+          NEW_RELEASE_BRANCH="release-$NEXT_VERSION"
+          echo "Próxima branch de release será: $NEW_RELEASE_BRANCH"
+          echo "Branch base para criar a nova release: $BRANCH_BASE_FOR_NEW_RELEASE"
+          # Define variáveis de saída para serem usadas em passos futuros
+          echo "NEW_RELEASE_BRANCH=$NEW_RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "BRANCH_BASE_FOR_NEW_RELEASE=$BRANCH_BASE_FOR_NEW_RELEASE" >> $GITHUB_OUTPUT # Adiciona a branch base para criação
+
+      - name: Create and push new release branch
+        run: |
+          NEW_RELEASE_BRANCH=${{ steps.set_version.outputs.NEW_RELEASE_BRANCH }}
+          BRANCH_BASE_FOR_NEW_RELEASE=${{ steps.set_version.outputs.BRANCH_BASE_FOR_NEW_RELEASE }} # Recupera a branch base
+
+          echo "Criando branch $NEW_RELEASE_BRANCH a partir de $BRANCH_BASE_FOR_NEW_RELEASE"
+          # Cria a nova branch localmente a partir da branch base determinada
+          git checkout -b $NEW_RELEASE_BRANCH origin/$BRANCH_BASE_FOR_NEW_RELEASE # Cria a partir da referência remota
+          # Envia a nova branch para o repositório remoto
+          git push origin $NEW_RELEASE_BRANCH
+
+      - name: Create Pull Request from develop to new release branch # Nome do passo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Usa o token do GitHub Actions
+        run: |
+          NEW_RELEASE_BRANCH=${{ steps.set_version.outputs.NEW_RELEASE_BRANCH }}
+          NEXT_VERSION=${{ steps.set_version.outputs.NEXT_VERSION }}
+          # Cria o Pull Request usando o GitHub CLI
+          gh pr create --base $NEW_RELEASE_BRANCH --head develop --title "Merge develop into release v${NEXT_VERSION}" --body "Pull Request para mergear as mudanças de `develop` na branch de release `${NEW_RELEASE_BRANCH}`."
+
