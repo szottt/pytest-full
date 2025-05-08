@@ -1,45 +1,74 @@
 # File: .github/workflows/release-to-main.yaml
-name: 'Merge Release to Main' # Nome do workflow
+name: 'Release to Main'
 
 on:
-  pull_request:
-    types: [closed] # Dispara quando um Pull Request é fechado
-    branches:
-      - 'main' # Dispara apenas para PRs fechados onde a branch base é 'main'
+  push:
+    branches: [release-*]
 
 permissions:
-  contents: write # Permissão necessária para fazer o merge e push para main
+  contents: write
+  pull-requests: write
 
 jobs:
-  merge_to_main:
+  test:
     runs-on: ubuntu-latest
-    # Só executa este job se o Pull Request foi mergeado (não apenas fechado sem merge)
-    if: github.event.pull_request.merged
-    environment: Producao # Associa este job ao ambiente Producao
+
+    steps:
+      # Novo passo para verificar a variável
+      - name: Check github.ref_name
+        run: echo "github.ref_name is ${{ github.ref_name }}"
+
+      - name: Copia os arquivos do repo
+        uses: actions/checkout@v3
+
+      - name: Instalar o python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.1'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Tests
+        run: |
+          pytest --rootdir=. \
+            --cov=. \
+            --cov-report=term \
+            -v \
+            -q
+      # Aqui você pode incluir os testes como no outro workflow
+
+  create-pull-request:
+    runs-on: ubuntu-latest
+    needs: test
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      - name: Checkout main branch
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: main # Faz checkout da branch main
-          fetch-depth: 0 # Necessário para operações de merge
+          fetch-depth: 0
 
-      - name: Configure Git
+      - name: Check differences before PR
         run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions@github.com"
+          git fetch origin main
+          git fetch origin ${{ github.ref_name }}
+          echo "Commits in ${{ github.ref_name }} not in main:"
+          git log origin/main..origin/${{ github.ref_name }} --oneline
+          echo "Count of commits in ${{ github.ref_name }} not in main:"
+          git rev-list --right-only --count origin/main...origin/${{ github.ref_name }}
 
-      - name: Merge release branch into main
+      # AQUI está o bloco que você pediu
+      - name: Create Pull Request using GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Puxa as últimas mudanças da main
-          git pull origin main
-          # Faz o merge da branch que foi mergeada no PR (a branch head do PR fechado)
-          # github.event.pull_request.head.ref contém o nome da branch de origem do PR
-          git merge --no-ff origin/${{ github.event.pull_request.head.ref }} -m "Merge branch '${{ github.event.pull_request.head.ref }}' into main via PR #${{ github.event.pull_request.number }}"
-
-      - name: Push changes to main
-        run: |
-          git push origin main
+          gh pr create \
+            --base main \
+            --head ${{ github.ref_name }} \
+            --title "release: PR from ${{ github.ref_name }} to main" \
+            --body "Este Pull Request foi criado automaticamente pelo GitHub Actions.\n\nMerge da branch `${{ github.ref_name }}` para \`main\`."
